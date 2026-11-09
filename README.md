@@ -15,8 +15,11 @@ No payment processing, transfers, or external commitments.
 ## V7 task worker (`v7/`)
 
 `mammon7_v7.py` — Termux task worker + Mistral chat (standard library only).
-Fixed: unique task directories on same-second collisions, EOF-safe prompts,
-removed unused import. Does not submit applications, spend money, or make payments.
+V7.1 structured builder (JSON file generation, safe-path validation, package
+dirs, ZIP + integrity checks, verification reports, SHA-256 hashes) plus:
+unique task directories on same-second collisions, EOF-safe prompts,
+duplicate-filename detection, removed unused import.
+Does not submit applications, spend money, or make payments.
 
 ## Tests
 
@@ -24,7 +27,7 @@ removed unused import. Does not submit applications, spend money, or make paymen
 python3 -m unittest discover -s tests
 ```
 
-77 tests: core (5), revenue (19), expenses (19), ledger (20), profit (11), v7 (3).
+80 tests: core (5), revenue (19), expenses (19), ledger (20), profit (11), v7 (3), v7.1 end-to-end (3).
 
 ## License
 
