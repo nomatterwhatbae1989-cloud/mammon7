@@ -8,7 +8,7 @@ from .revenue import RevenueRecord
 from .expenses import ExpenseRecord
 
 
-def _sum_amounts(records: Iterable[Any], expected_type) -> float:
+def _sum_amounts(records: Iterable, expected_type) -> float:
     total = 0.0
     for record in records:
         if not isinstance(record, expected_type):
@@ -49,5 +49,52 @@ def profit_summary(
         "total_revenue": revenue,
         "total_expenses": expenses,
         "net_profit": revenue - expenses,
+        "SIMULATED": True,
+    }
+
+
+def net_profit_full(
+    revenue_records: Iterable[RevenueRecord],
+    expense_records: Iterable[ExpenseRecord],
+    fee_records: Iterable = (),
+    refund_records: Iterable = (),
+) -> float:
+    """Net profit accounting for expenses, platform fees, and refunds.
+
+    net = gross revenue - expenses - fees - refunds
+    """
+    from .fees import FeeRecord
+    from .refunds import RefundRecord
+
+    gross = total_revenue(revenue_records)
+    expenses = total_expenses(expense_records)
+    fees = _sum_amounts(fee_records, FeeRecord)
+    refunds = _sum_amounts(refund_records, RefundRecord)
+    return gross - expenses - fees - refunds
+
+
+def full_profit_summary(
+    revenue_records: Iterable[RevenueRecord],
+    expense_records: Iterable[ExpenseRecord],
+    fee_records: Iterable = (),
+    refund_records: Iterable = (),
+) -> dict:
+    """Complete money picture: revenue, expenses, fees, refunds, net.
+
+    All figures are SIMULATED estimates unless built from verified records.
+    """
+    from .fees import FeeRecord
+    from .refunds import RefundRecord
+
+    gross = total_revenue(revenue_records)
+    expenses = total_expenses(expense_records)
+    fees = _sum_amounts(fee_records, FeeRecord)
+    refunds = _sum_amounts(refund_records, RefundRecord)
+    return {
+        "gross_revenue": gross,
+        "total_expenses": expenses,
+        "platform_fees": fees,
+        "refunds": refunds,
+        "net_profit": gross - expenses - fees - refunds,
         "SIMULATED": True,
     }

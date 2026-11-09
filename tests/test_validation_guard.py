@@ -24,6 +24,8 @@ SRC = Path(__file__).resolve().parents[1] / "src"
 MODULES = [
     ("revenue.py", "RevenueEngine", "src.revenue"),
     ("expenses.py", "ExpenseEngine", "src.expenses"),
+    ("fees.py", "FeeEngine", "src.fees"),
+    ("refunds.py", "RefundEngine", "src.refunds"),
 ]
 
 
@@ -111,7 +113,11 @@ class TestValidateRecordMutationDetection(unittest.TestCase):
     """
 
     def _valid_record(self, engine_cls):
-        return engine_cls().create_record("guard-check", 42.0)
+        if hasattr(engine_cls, "create_record"):
+            return engine_cls().create_record("guard-check", 42.0)
+        if hasattr(engine_cls, "create_fee"):
+            return engine_cls().create_fee("guard-check", 42.0)
+        return engine_cls().create_refund("guard-check", 42.0)
 
     def test_mutant_without_return_true_is_detectable(self):
         for module_file, class_name, _ in MODULES:
@@ -128,7 +134,9 @@ class TestValidateRecordMutationDetection(unittest.TestCase):
     def test_real_validate_accepts_valid_record(self):
         from src.revenue import RevenueEngine
         from src.expenses import ExpenseEngine
-        for engine_cls in (RevenueEngine, ExpenseEngine):
+        from src.fees import FeeEngine
+        from src.refunds import RefundEngine
+        for engine_cls in (RevenueEngine, ExpenseEngine, FeeEngine, RefundEngine):
             with self.subTest(engine=engine_cls.__name__):
                 valid = self._valid_record(engine_cls)
                 self.assertIs(engine_cls().validate_record(valid), True)

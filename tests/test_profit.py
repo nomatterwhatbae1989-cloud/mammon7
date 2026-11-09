@@ -3,6 +3,8 @@ import unittest
 from src.profit import net_profit, profit_summary, total_expenses, total_revenue
 from src.revenue import RevenueEngine, RevenueRecord
 from src.expenses import ExpenseEngine, ExpenseRecord
+from src.fees import FeeEngine
+from src.refunds import RefundEngine
 
 
 def make_revenue(amount, service_id="svc"):
@@ -93,3 +95,47 @@ class TestProfitSummary(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestFullNetProfit(unittest.TestCase):
+
+    def test_net_profit_full_accounts_for_fees_and_refunds(self):
+        from src.profit import net_profit_full
+        revenue = [make_revenue(500)]
+        expenses = [make_expense(100)]
+        fees = [FeeEngine().create_fee(revenue[0].id, 50)]
+        refunds = [RefundEngine().create_refund(revenue[0].id, 30)]
+        self.assertAlmostEqual(
+            net_profit_full(revenue, expenses, fees, refunds), 320.0
+        )
+
+    def test_net_profit_full_empty_optional(self):
+        from src.profit import net_profit_full
+        revenue = [make_revenue(100)]
+        expenses = [make_expense(25)]
+        self.assertAlmostEqual(net_profit_full(revenue, expenses), 75.0)
+
+    def test_full_profit_summary_fields(self):
+        from src.profit import full_profit_summary
+        revenue = [make_revenue(300)]
+        fees = [FeeEngine().create_fee(revenue[0].id, 45)]
+        refunds = [RefundEngine().create_refund(revenue[0].id, 15)]
+        summary = full_profit_summary(revenue, [], fees, refunds)
+        self.assertEqual(
+            set(summary.keys()),
+            {"gross_revenue", "total_expenses", "platform_fees",
+             "refunds", "net_profit", "SIMULATED"},
+        )
+        self.assertAlmostEqual(summary["gross_revenue"], 300.0)
+        self.assertAlmostEqual(summary["platform_fees"], 45.0)
+        self.assertAlmostEqual(summary["refunds"], 15.0)
+        self.assertAlmostEqual(summary["net_profit"], 240.0)
+        self.assertIs(summary["SIMULATED"], True)
+
+    def test_net_profit_full_rejects_wrong_types(self):
+        from src.profit import net_profit_full
+        revenue = [make_revenue(100)]
+        with self.assertRaises(TypeError):
+            net_profit_full(revenue, [], fee_records=[make_expense(10)])
+        with self.assertRaises(TypeError):
+            net_profit_full(revenue, [], refund_records=[make_revenue(10)])
