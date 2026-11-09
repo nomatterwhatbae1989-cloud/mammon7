@@ -27,7 +27,7 @@ Does not submit applications, spend money, or make payments.
 python3 -m unittest discover -s tests
 ```
 
-80 tests: core (5), revenue (19), expenses (19), ledger (20), profit (11), v7 (3), v7.1 end-to-end (3).
+84 tests: core (5), revenue (19), expenses (19), ledger (20), profit (11), v7 (3), v7.1 end-to-end (3), validation guard (4).
 
 ## License
 
