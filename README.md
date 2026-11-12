@@ -35,7 +35,7 @@ python3 mammon.py            # interactive CLI
 python3 -m unittest discover -s tests
 ```
 
-192 tests: core (5), revenue (19), expenses (19), ledger (20), profit (15), fees (14), refunds (14), invoices (11), payments (18), backup (7), scoring (16), forecast (14), v7 (3), v7.1 end-to-end (3), validation guard (7), CLI (8).
+193 tests: core (5), revenue (19), expenses (19), ledger (20), profit (15), fees (14), refunds (14), invoices (11), payments (19), backup (7), scoring (16), forecast (14), v7 (3), v7.1 end-to-end (3), validation guard (7), CLI (8).
 
 ## License
 
