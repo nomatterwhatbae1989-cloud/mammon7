@@ -14,6 +14,8 @@ No payment processing, transfers, or external commitments.
 - `refunds.py` — refund records (`RefundEngine`), capped refunds.
 - `profit.py` — totals, net profit, full summary with fees/refunds (SIMULATED-marked).
 - `invoices.py` — SIMULATED invoice building and text rendering.
+- `scoring.py` — opportunity creation and scoring (ESTIMATE-flagged).
+- `forecast.py` — verified monthly summaries + clearly-flagged projections.
 
 ## V7 task worker (`v7/`)
 
@@ -30,7 +32,7 @@ Does not submit applications, spend money, or make payments.
 python3 -m unittest discover -s tests
 ```
 
-127 tests: core (5), revenue (19), expenses (19), ledger (20), profit (15), fees (14), refunds (14), invoices (11), v7 (3), v7.1 end-to-end (3), validation guard (4+2=6 checks across 4 modules).
+158 tests: core (5), revenue (19), expenses (19), ledger (20), profit (15), fees (14), refunds (14), invoices (11), scoring (16), forecast (14), v7 (3), v7.1 end-to-end (3), validation guard (6).
 
 ## License
 
