@@ -45,6 +45,10 @@ class RevenueEngine:
         self._records.append(record)
         return record
 
+    def records(self) -> tuple:
+        """Return a read-only tuple copy of the stored records."""
+        return tuple(self._records)
+
     def validate_record(self, record: RevenueRecord) -> bool:
         if not isinstance(record, RevenueRecord):
             return False

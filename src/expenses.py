@@ -45,6 +45,10 @@ class ExpenseEngine:
         self._records.append(record)
         return record
 
+    def records(self) -> tuple:
+        """Return a read-only tuple copy of the stored records."""
+        return tuple(self._records)
+
     def validate_record(self, record: ExpenseRecord) -> bool:
         if not isinstance(record, ExpenseRecord):
             return False
