@@ -17,6 +17,8 @@ from src.revenue import RevenueEngine, RevenueRecord
 from src.expenses import ExpenseEngine, ExpenseRecord
 from src.fees import FeeEngine
 from src.refunds import RefundEngine
+from src.payments import PaymentEngine, verified_revenue
+from src.backup import BackupError, create_backup, verify_backup
 from src.ledger import Ledger
 from src.profit import full_profit_summary
 from src.forecast import ForecastError, monthly_summary, project_from_records
@@ -33,6 +35,7 @@ MENU = """
  3) Add platform fee     7) Score an opportunity
  4) Add refund           8) Build an invoice
  9) Forecast             10) List records
+11) Mark revenue as paid 12) Backup ledger
  q) Quit
 """
 
@@ -45,6 +48,7 @@ class App:
         self.expense_engine = ExpenseEngine()
         self.fee_engine = FeeEngine()
         self.refund_engine = RefundEngine()
+        self.payment_engine = PaymentEngine()
         self._load_records()
 
     def _load_records(self) -> None:
@@ -62,6 +66,12 @@ class App:
             elif "reason" in entry:
                 record = self.refund_engine.create_refund(
                     entry["revenue_id"], entry["amount"], entry.get("reason", "")
+                )
+                record.id = entry["id"]
+                record.timestamp = entry["timestamp"]
+            elif "paid_at" in entry:
+                record = self.payment_engine.create_payment(
+                    entry["revenue_id"], entry["amount"], entry["paid_at"]
                 )
                 record.id = entry["id"]
                 record.timestamp = entry["timestamp"]
@@ -96,6 +106,14 @@ class App:
         self.ledger.append(record.to_dict())
         return record
 
+    def add_payment(self, revenue_id: str, amount: float, paid_at: str = ""):
+        record = self.payment_engine.create_payment(revenue_id, amount, paid_at)
+        self.ledger.append(record.to_dict())
+        return record
+
+    def backup(self):
+        return create_backup(self.ledger.path, self.data_dir / "backups")
+
     # -- reports ---------------------------------------------------------
 
     def monthly(self) -> dict:
@@ -107,12 +125,16 @@ class App:
         )
 
     def profit(self) -> dict:
-        return full_profit_summary(
+        summary = full_profit_summary(
             self.revenue_engine.records(),
             self.expense_engine.records(),
             self.fee_engine.records(),
             self.refund_engine.records(),
         )
+        summary["payment_status"] = verified_revenue(
+            self.revenue_engine.records(), self.payment_engine.records()
+        )
+        return summary
 
     def forecast(self, months_ahead: int = 6) -> dict:
         return project_from_records(
@@ -141,6 +163,8 @@ class App:
             rows.append(("fee", "->" + record.revenue_id, record.amount, record.id))
         for record in self.refund_engine.records():
             rows.append(("refund", "->" + record.revenue_id, record.amount, record.id))
+        for record in self.payment_engine.records():
+            rows.append(("payment", "->" + record.revenue_id, record.amount, record.id))
         return rows
 
 
@@ -231,6 +255,16 @@ def main() -> int:
             elif choice == "9":
                 months = int(_ask_float("Months ahead: "))
                 print(json.dumps(app.forecast(months), indent=2))
+            elif choice == "11":
+                record = app.add_payment(_ask_str("Revenue id: "),
+                                         _ask_float("Amount received: "))
+                print(f"  Recorded payment {record.id} (VERIFIED).")
+            elif choice == "12":
+                manifest = app.backup()
+                print(f"  Backup created: {manifest['backup_file']}")
+                print(f"  Checksum: {manifest['backup_sha256']}")
+                check = verify_backup(Path(manifest["backup_file"]))
+                print(f"  Integrity: {check['integrity']}")
             elif choice == "10":
                 for kind, label, amount, record_id in app.list_records():
                     print(f"  {kind:<8} {label:<30} {amount:>10.2f}  {record_id}")
@@ -238,7 +272,7 @@ def main() -> int:
                     print("  (no records)")
             else:
                 print("  Unknown option.")
-        except (ValueError, ScoringError, InvoiceError, ForecastError) as exc:
+        except (ValueError, ScoringError, InvoiceError, ForecastError, BackupError) as exc:
             print(f"  [ERROR] {exc}")
 
 

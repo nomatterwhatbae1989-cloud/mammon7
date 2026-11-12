@@ -126,3 +126,42 @@ class TestCliBasics(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCliPaymentsAndBackup(unittest.TestCase):
+
+    def test_mark_paid_and_verified_profit(self):
+        result = run_cli([
+            "1", "web-design", "150",
+            "11", "rev-x", "150",
+            "6",
+        ])
+        try:
+            self.assertEqual(result["proc"].returncode, 0,
+                             msg=result["proc"].stderr[-800:])
+            out = result["proc"].stdout
+            self.assertIn("Recorded payment", out)
+            self.assertIn("(VERIFIED)", out)
+            self.assertIn("payment_status", out)
+            self.assertIn("verified_revenue", out)
+        finally:
+            result["tmp"].cleanup()
+
+    def test_backup_creates_verified_copy(self):
+        result = run_cli([
+            "1", "svc", "80",
+            "12",
+        ])
+        try:
+            self.assertEqual(result["proc"].returncode, 0,
+                             msg=result["proc"].stderr[-800:])
+            out = result["proc"].stdout
+            self.assertIn("Backup created:", out)
+            self.assertIn("Integrity: OK", out)
+            backups = Path(result["data_dir"]) / "backups"
+            files = list(backups.iterdir())
+            self.assertEqual(len(files), 2)  # backup + manifest
+            backup = next(f for f in files if f.suffix == ".jsonl")
+            self.assertIn("svc", backup.read_text(encoding="utf-8"))
+        finally:
+            result["tmp"].cleanup()
