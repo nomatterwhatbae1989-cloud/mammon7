@@ -26,6 +26,7 @@ MODULES = [
     ("expenses.py", "ExpenseEngine", "src.expenses"),
     ("fees.py", "FeeEngine", "src.fees"),
     ("refunds.py", "RefundEngine", "src.refunds"),
+    ("payments.py", "PaymentEngine", "src.payments"),
 ]
 
 
@@ -117,7 +118,9 @@ class TestValidateRecordMutationDetection(unittest.TestCase):
             return engine_cls().create_record("guard-check", 42.0)
         if hasattr(engine_cls, "create_fee"):
             return engine_cls().create_fee("guard-check", 42.0)
-        return engine_cls().create_refund("guard-check", 42.0)
+        if hasattr(engine_cls, "create_refund"):
+            return engine_cls().create_refund("guard-check", 42.0)
+        return engine_cls().create_payment("guard-check", 42.0)
 
     def test_mutant_without_return_true_is_detectable(self):
         for module_file, class_name, _ in MODULES:
@@ -136,7 +139,9 @@ class TestValidateRecordMutationDetection(unittest.TestCase):
         from src.expenses import ExpenseEngine
         from src.fees import FeeEngine
         from src.refunds import RefundEngine
-        for engine_cls in (RevenueEngine, ExpenseEngine, FeeEngine, RefundEngine):
+        from src.payments import PaymentEngine
+        for engine_cls in (RevenueEngine, ExpenseEngine, FeeEngine,
+                           RefundEngine, PaymentEngine):
             with self.subTest(engine=engine_cls.__name__):
                 valid = self._valid_record(engine_cls)
                 self.assertIs(engine_cls().validate_record(valid), True)
