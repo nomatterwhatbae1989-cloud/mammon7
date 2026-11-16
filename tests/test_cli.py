@@ -165,3 +165,42 @@ class TestCliPaymentsAndBackup(unittest.TestCase):
             self.assertIn("svc", backup.read_text(encoding="utf-8"))
         finally:
             result["tmp"].cleanup()
+
+
+class TestCliWorkPipeline(unittest.TestCase):
+    """Offline path: import a lead, set skills, match, draft proposal."""
+
+    def test_import_skills_match_proposal(self):
+        result = run_cli([
+            "14", "Python script for API cleanup", "Acme", "manual",
+            "https://example.com/job/1", "Automate API data cleanup with Python",
+            "python, api",
+            "15", "python, api, automation", "30",
+            "16", "",
+        ])
+        try:
+            self.assertEqual(result["proc"].returncode, 0,
+                             msg=result["proc"].stderr[-800:])
+            out = result["proc"].stdout
+            self.assertIn("Imported lead", out)
+            self.assertIn("Saved 3 skills", out)
+            self.assertIn("est bid", out)
+            self.assertIn("Proposal draft saved:", out)
+            self.assertIn("DRAFT ONLY", out)
+            proposals = [p for p in Path(result["data_dir"]).iterdir()
+                         if p.name.startswith("proposal_")]
+            self.assertEqual(len(proposals), 1)
+            body = proposals[0].read_text(encoding="utf-8")
+            self.assertIn("Subject: Proposal", body)
+            self.assertIn("DRAFT ONLY", body)
+        finally:
+            result["tmp"].cleanup()
+
+    def test_match_requires_skills(self):
+        result = run_cli(["16"])
+        try:
+            self.assertEqual(result["proc"].returncode, 0,
+                             msg=result["proc"].stderr[-800:])
+            self.assertIn("Set your skills first", result["proc"].stdout)
+        finally:
+            result["tmp"].cleanup()

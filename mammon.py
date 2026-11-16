@@ -19,6 +19,8 @@ from src.fees import FeeEngine
 from src.refunds import RefundEngine
 from src.payments import PaymentEngine, verified_revenue
 from src.backup import BackupError, create_backup, verify_backup
+from src.discovery import DiscoveryError, discover, lead_from_dict, make_lead
+from src.matching import MatchingError, build_proposal, rank_matches
 from src.ledger import Ledger
 from src.profit import full_profit_summary
 from src.forecast import ForecastError, monthly_summary, project_from_records
@@ -36,6 +38,8 @@ MENU = """
  4) Add refund           8) Build an invoice
  9) Forecast             10) List records
 11) Mark revenue as paid 12) Backup ledger
+13) Scan for work       14) Import lead manually
+15) Set my skills       16) Match leads & draft proposals
  q) Quit
 """
 
@@ -50,6 +54,39 @@ class App:
         self.refund_engine = RefundEngine()
         self.payment_engine = PaymentEngine()
         self._load_records()
+        self.skills_file = self.data_dir / "skills.json"
+        self.leads_file = self.data_dir / "leads.jsonl"
+
+    def load_skills(self):
+        try:
+            data = json.loads(self.skills_file.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return []
+        skills = data.get("skills", [])
+        rate = data.get("hourly_rate", 25.0)
+        if not isinstance(skills, list) or not all(isinstance(s, str) for s in skills):
+            return []
+        return skills
+
+    def save_skills(self, skills, hourly_rate):
+        self.skills_file.write_text(
+            json.dumps({"skills": skills, "hourly_rate": hourly_rate}, indent=2),
+            encoding="utf-8")
+
+    def load_leads(self):
+        leads = []
+        try:
+            for line in self.leads_file.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if line:
+                    leads.append(lead_from_dict(json.loads(line)))
+        except (OSError, DiscoveryError, ValueError):
+            pass
+        return leads
+
+    def save_lead(self, lead):
+        with self.leads_file.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(lead.to_dict(), ensure_ascii=False) + "\n")
 
     def _load_records(self) -> None:
         for entry in self.ledger.read_all():
@@ -265,6 +302,57 @@ def main() -> int:
                 print(f"  Checksum: {manifest['backup_sha256']}")
                 check = verify_backup(Path(manifest["backup_file"]))
                 print(f"  Integrity: {check['integrity']}")
+            elif choice == "13":
+                print("  Scanning public job feeds (offline sources are skipped)...")
+                leads = discover()
+                for lead in leads[:20]:
+                    print(f"  [{lead.source}] {lead.title} ({lead.company})")
+                    print(f"    {lead.url}")
+                for lead in leads:
+                    app.save_lead(lead)
+                print(f"  Saved {len(leads)} leads to {self.leads_file if False else app.leads_file}")
+            elif choice == "14":
+                lead = make_lead(
+                    _ask_str("Lead title: "),
+                    input("Company (optional): ").strip(),
+                    _ask_str("Source (e.g. 'manual'): "),
+                    _ask_str("URL: "),
+                    input("Description (optional): ").strip(),
+                    [t.strip() for t in input("Tags, comma-separated (optional): ").split(",") if t.strip()],
+                )
+                app.save_lead(lead)
+                print(f"  Imported lead {lead.id}.")
+            elif choice == "15":
+                skills = [s.strip() for s in
+                          input("Skills, comma-separated: ").split(",") if s.strip()]
+                rate = _ask_float("Target hourly rate: ", allow_zero=False)
+                app.save_skills(skills, rate)
+                print(f"  Saved {len(skills)} skills.")
+            elif choice == "16":
+                skills = app.load_skills()
+                if not skills:
+                    print("  Set your skills first (option 15).")
+                else:
+                    rate = 25.0
+                    try:
+                        rate = json.loads(app.skills_file.read_text(encoding="utf-8")).get("hourly_rate", 25.0)
+                    except (OSError, ValueError):
+                        pass
+                    matches = rank_matches(app.load_leads(), skills, rate)
+                    if not matches:
+                        print("  No leads saved yet; scan (13) or import (14) first.")
+                    for m in matches[:5]:
+                        print(f"  {m['match_score']:>5} | {m['title']} | est bid ${m['est_bid']}")
+                    if matches:
+                        pick = input("Draft proposal for which rank # (blank = 1)? ").strip()
+                        idx = int(pick) - 1 if pick.isdigit() else 0
+                        if 0 <= idx < len(matches):
+                            lead = app.load_leads()[idx]
+                            proposal = build_proposal(lead, skills, rate)
+                            out_file = app.data_dir / f"proposal_{proposal['id'][:8]}.txt"
+                            out_file.write_text(proposal["body"] + "\n", encoding="utf-8")
+                            print(f"  Proposal draft saved: {out_file}")
+                            print("  DRAFT ONLY — review, personalize, and send it yourself.")
             elif choice == "10":
                 for kind, label, amount, record_id in app.list_records():
                     print(f"  {kind:<8} {label:<30} {amount:>10.2f}  {record_id}")
@@ -272,7 +360,8 @@ def main() -> int:
                     print("  (no records)")
             else:
                 print("  Unknown option.")
-        except (ValueError, ScoringError, InvoiceError, ForecastError, BackupError) as exc:
+        except (ValueError, ScoringError, InvoiceError, ForecastError, BackupError,
+                DiscoveryError, MatchingError) as exc:
             print(f"  [ERROR] {exc}")
 
 

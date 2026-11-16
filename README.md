@@ -17,6 +17,10 @@ No payment processing, transfers, or external commitments.
 - `payments.py` — VERIFIED payment records; splits revenue into verified vs outstanding.
 - `backup.py` — timestamped, checksummed, non-destructive ledger backups.
 - `scoring.py` — opportunity creation and scoring (ESTIMATE-flagged).
+- `discovery.py` — freelance leads from public feeds (RemoteOK, Remotive,
+  WeWorkRemotely RSS) or manual import; failing sources skipped, never fatal.
+- `matching.py` — skill matching, ranked leads, DRAFT-ONLY proposals
+  (never sent or submitted automatically).
 - `forecast.py` — verified monthly summaries + clearly-flagged projections.
 
 ## V7 task worker (`v7/`)
@@ -35,7 +39,7 @@ python3 mammon.py            # interactive CLI
 python3 -m unittest discover -s tests
 ```
 
-193 tests: core (5), revenue (19), expenses (19), ledger (20), profit (15), fees (14), refunds (14), invoices (11), payments (19), backup (7), scoring (16), forecast (14), v7 (3), v7.1 end-to-end (3), validation guard (7), CLI (8).
+222 tests: core (5), revenue (19), expenses (19), ledger (20), profit (15), fees (14), refunds (14), invoices (11), payments (19), backup (7), scoring (16), forecast (14), discovery (16), matching (13), v7 (3), v7.1 end-to-end (3), validation guard (7), CLI (10).
 
 ## License
 
